@@ -142,3 +142,14 @@
     (ok true)
   )
 )
+
+;; Add this function to vault-factory.clar
+
+(define-read-only (get-vault-balance (vault-id uint))
+  (let
+    (
+      (vault (unwrap! (map-get? vaults {vault-id: vault-id}) (err u101)))
+    )
+    (get sbtc-balance vault)
+  )
+)
