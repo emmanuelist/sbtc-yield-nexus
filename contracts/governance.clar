@@ -39,3 +39,23 @@
     (ok true)
   )
 )
+
+;; Multisig functionality for critical operations
+(define-map proposals
+  {proposal-id: uint}
+  {
+    operation: (string-ascii 64),
+    target-contract: principal,
+    function-name: (string-ascii 64),
+    parameters: (list 10 (buff 256)),
+    approvals: (list 10 principal),
+    required-approvals: uint,
+    expiration: uint,
+    executed: bool
+  }
+)
+
+(define-data-var proposal-nonce uint u0)
+
+(define-data-var admin-members (list 10 principal) (list tx-sender))
+(define-data-var min-approvals uint u1)
