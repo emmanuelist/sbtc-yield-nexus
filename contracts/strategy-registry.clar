@@ -139,7 +139,7 @@
 (define-private (execute-allocation (allocation {protocol-id: uint, percentage: uint}) (previous-result (response bool uint)))
   (match previous-result
     success (
-      let
+      (let
         (
           (protocol-id (get protocol-id allocation))
           (percentage (get percentage allocation))
@@ -149,10 +149,10 @@
           (amount-to-allocate (/ (* percentage u100) u10000))
         )
         ;; Execute dynamic contract call to deposit funds
-        (contract-call? .dynamic-caller execute contract-addr deposit-fn amount-to-allocate)
+        (contract-call? .dynamic-caller execute contract-addr deposit-fn amount-to-allocate))
       )
-    )
     error (err error)
+  )
 )
 
 (define-public (withdraw-from-strategy (strategy-id uint) (amount uint))
