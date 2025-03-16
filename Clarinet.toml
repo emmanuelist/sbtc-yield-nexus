@@ -1,21 +1,75 @@
 [project]
-name = "sbtc-yield-nexus"
-description = ""
+name = 'sbtc-yield-nexus'
+description = ''
 authors = []
 telemetry = true
-cache_dir = "./.cache"
+cache_dir = './.cache'
+requirements = []
+[contracts.dynamic-caller]
+path = 'contracts/dynamic-caller.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["vault-factory", "strategy-registry"]
 
-# [contracts.counter]
-# path = "contracts/counter.clar"
+[contracts.governance]
+path = 'contracts/governance.clar'
+clarity_version = 3
+epoch = 3.1
+
+
+[contracts.risk-engine]
+path = 'contracts/risk-engine.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["governance"]
+
+[contracts.sbtc-deposit]
+path = 'contracts/sbtc-deposit.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["sbtc-token", "sbtc-registry"]
+
+[contracts.sbtc-registry]
+path = 'contracts/sbtc-registry.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["sbtc-deposit", "sbtc-withdrawal"]
+
+[contracts.sbtc-token]
+path = 'contracts/sbtc-token.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["sbtc-registry"]
+
+[contracts.sbtc-withdrawal]
+path = 'contracts/sbtc-withdrawal.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["sbtc-registry", "sbtc-token"]
+
+[contracts.strategy-registry]
+path = 'contracts/strategy-registry.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["governance", "risk-engine", "dynamic-caller"]
+
+[contracts.vault-factory]
+path = 'contracts/vault-factory.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["strategy-registry", "sbtc-token"]
+
+[contracts.ysbtc-token]
+path = 'contracts/ysbtc-token.clar'
+clarity_version = 3
+epoch = 3.1
+depends_on = ["vault-factory", "sbtc-token", "governance"]
 
 [repl.analysis]
-passes = ["check_checker"]
-check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
+passes = ['check_checker']
 
-# Check-checker settings:
-# trusted_sender: if true, inputs are trusted after tx_sender has been checked.
-# trusted_caller: if true, inputs are trusted after contract-caller has been checked.
-# callee_filter: if true, untrusted data may be passed into a private function without a
-# warning, if it gets checked inside. This check will also propagate up to the
-# caller.
-# More informations: https://www.hiro.so/blog/new-safety-checks-in-clarinet
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
