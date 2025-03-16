@@ -44,6 +44,11 @@
     ;; Verify caller is governance
     (asserts! (is-eq tx-sender (contract-call? .governance get-governor)) (err u200))
     
+    ;; Basic input validation
+    (asserts! (not (is-eq name "")) (err u210))
+    (asserts! (not (is-eq function-deposit "")) (err u211))
+    (asserts! (not (is-eq function-withdraw "")) (err u212))
+    
     ;; Register protocol
     (map-set protocol-integrations 
       {protocol-id: protocol-id}
@@ -73,6 +78,11 @@
       (strategy-id (var-get strategy-nonce))
       (caller tx-sender)
     )
+    ;; Input validation
+    (asserts! (not (is-eq name "")) (err u213))
+    (asserts! (and (>= risk-level u1) (<= risk-level u10)) (err u214)) ;; Assuming 1-10 scale
+    (asserts! (> (len protocols) u0) (err u215))
+    
     ;; Verify all protocols exist and are active
     (asserts! (fold check-protocols protocols true) (err u201))
     
@@ -111,6 +121,10 @@
       (protocols (get protocols strategy))
       (current-tvl (get tvl strategy))
     )
+    ;; Input validation
+    (asserts! (> amount u0) (err u216))
+    (asserts! (< (+ current-tvl amount) u1000000000000) (err u217)) ;; Overflow protection
+    
     ;; Verify the strategy is active
     (asserts! (get active strategy) (err u203))
     
@@ -344,6 +358,7 @@
     (ok true)
   )
 )
+
 
 (define-public (execute-strategy-update (strategy-id uint))
   (let
