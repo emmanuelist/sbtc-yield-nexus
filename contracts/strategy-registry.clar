@@ -233,10 +233,41 @@
 
 ;; Function to execute withdrawals from protocols based on allocations
 (define-private (execute-withdrawals (allocations (list 10 {protocol-id: uint, percentage: uint})) (total-amount uint))
-  (fold execute-withdrawal allocations (ok true))
+  (fold execute-withdrawal-with-amount allocations (ok {result: true, remaining: total-amount}))
 )
 
-(define-private (execute-withdrawal (allocation {protocol-id: uint, percentage: uint}) (previous-result (response bool uint)))
+;; Helper function to add total-amount to each allocation
+(define-private (add-amount (allocation {protocol-id: uint, percentage: uint}) (total uint))
+  (merge allocation {total-amount: total})
+)
+
+;; Modified execute-withdrawal to receive the total amount
+(define-private (execute-withdrawal-with-amount 
+  (allocation {protocol-id: uint, percentage: uint}) 
+  (previous-result (response {result: bool, remaining: uint} uint)))
+  (match previous-result
+    success-data
+      (let
+        (
+          (protocol-id (get protocol-id allocation))
+          (percentage (get percentage allocation))
+          (total-amount (get remaining success-data))
+          (protocol (unwrap! (map-get? protocol-integrations {protocol-id: protocol-id}) (err u205)))
+          (contract-addr (get contract-address protocol))
+          (withdraw-fn (get function-withdraw protocol))
+          (amount-to-withdraw (/ (* percentage total-amount) u10000))
+        )
+        ;; Execute dynamic contract call to withdraw funds
+        (match (contract-call? .dynamic-caller execute contract-addr withdraw-fn amount-to-withdraw)
+          success (ok {result: true, remaining: (- total-amount amount-to-withdraw)})
+          error (err error)
+        )
+      )
+    error (err error)
+  )
+)
+
+(define-private (execute-withdrawal (allocation {protocol-id: uint, percentage: uint, total-amount: uint}) (previous-result (response bool uint)))
   (match previous-result
     success
       (let
@@ -246,7 +277,7 @@
           (protocol (unwrap! (map-get? protocol-integrations {protocol-id: protocol-id}) (err u205)))
           (contract-addr (get contract-address protocol))
           (withdraw-fn (get function-withdraw protocol))
-          (amount-to-withdraw (/ (* percentage total-amount) u10000))
+          (amount-to-withdraw (/ (* percentage (get total-amount allocation)) u10000))
         )
         ;; Execute dynamic contract call to withdraw funds
         (contract-call? .dynamic-caller execute contract-addr withdraw-fn amount-to-withdraw)
@@ -305,7 +336,7 @@
       {strategy-id: strategy-id}
       {
         proposed-protocols: new-protocols,
-        proposed-at: block-height,
+        proposed-at: stacks-block-height,
         proposer: caller
       }
     )
@@ -328,7 +359,7 @@
              (err u207))
     
     ;; Verify timelock has passed
-    (asserts! (>= (- block-height (get proposed-at proposal)) timelock) (err u209))
+    (asserts! (>= (- stacks-block-height (get proposed-at proposal)) timelock) (err u209))
     
     ;; Update strategy protocols
     (map-set strategies 
