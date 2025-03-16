@@ -41,6 +41,7 @@
     (
       (protocol-id (var-get protocol-nonce))
     )
+    
     ;; Verify caller is governance
     (asserts! (is-eq tx-sender (contract-call? .governance get-governor)) (err u200))
     
@@ -146,6 +147,7 @@
         ;; Validate allocations
         (asserts! (> (len allocations) u0) (err u221))
         (asserts! (<= (len allocations) u10) (err u222))
+        (try! (validate-allocations allocations))
         
         ;; Distribute funds according to allocations
         (try! (execute-allocations allocations amount))
@@ -153,6 +155,19 @@
       )
     )
   )
+)
+
+;; Define a new helper function to validate allocation percentages
+(define-private (validate-allocations (allocations (list 10 {protocol-id: uint, percentage: uint})))
+  (begin
+    ;; Validate sum of percentages is 10000 (100%)
+    (asserts! (is-eq (fold add-percentages allocations u0) u10000) (err u223))
+    (ok true)
+  )
+)
+
+(define-private (add-percentages (allocation {protocol-id: uint, percentage: uint}) (sum uint))
+  (+ sum (get percentage allocation))
 )
 
 (define-private (execute-allocations (allocations (list 10 {protocol-id: uint, percentage: uint})) (total-amount uint))
@@ -202,6 +217,12 @@
       (
         (allocations (unwrap! (contract-call? .risk-engine get-allocations strategy-id protocols) (err u204)))
       )
+
+      ;; Add validation for allocations
+      (asserts! (> (len allocations) u0) (err u221))
+      (asserts! (<= (len allocations) u10) (err u222))
+      (try! (validate-allocations allocations))  ;; Reuse the helper function
+
       ;; Handle withdrawals from protocols
       (try! (execute-withdrawals allocations amount))
       (ok true)
