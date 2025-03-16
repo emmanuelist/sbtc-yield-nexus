@@ -219,6 +219,8 @@
     
     ;; Validate sweep-txid is not empty (all zeros)
     (asserts! (not (is-eq sweep-txid 0x0000000000000000000000000000000000000000000000000000000000000000)) (err u406))
+	;; Validate burn-hash is not empty
+	(asserts! (not (is-eq burn-hash 0x0000000000000000000000000000000000000000000000000000000000000000)) (err u411))
     
     ;; Mark the withdrawal as completed
     (map-insert withdrawal-status request-id true)
@@ -294,19 +296,32 @@
     (try! (is-protocol-caller deposit-role contract-caller))
     
     ;; Validate txid is not empty (all zeros)
-    (asserts! (not (is-eq txid 0x0000000000000000000000000000000000000000000000000000000000000000)) (err u404))
+    (asserts! (not (is-eq txid 0x0000000000000000000000000000000000000000000000000000000000000000)) 
+              (err u404))
+    
+    ;; Validate vout-index is reasonable
+    (asserts! (< vout-index u1000) (err u412))
     
     ;; Validate amount is not zero
     (asserts! (> amount u0) (err u405))
     
-    ;; Check that the deposit hasn't already been processed
-    (asserts! (is-none (map-get? deposit-status {txid: txid, vout-index: vout-index})) (err u406))
+    ;; Validate recipient is not empty/null
+    (asserts! (not (is-eq recipient 'ST000000000000000000002AMW42H)) (err u413))
+    
+    ;; Validate burn-hash is not empty
+    (asserts! (not (is-eq burn-hash 0x0000000000000000000000000000000000000000000000000000000000000000)) 
+              (err u411))
     
     ;; Validate burn height is reasonable
     (asserts! (> burn-height u0) (err u407))
     
     ;; Validate sweep-txid is not empty
-    (asserts! (not (is-eq sweep-txid 0x0000000000000000000000000000000000000000000000000000000000000000)) (err u408))
+    (asserts! (not (is-eq sweep-txid 0x0000000000000000000000000000000000000000000000000000000000000000)) 
+              (err u408))
+    
+    ;; Check that the deposit hasn't already been processed
+    (asserts! (is-none (map-get? deposit-status {txid: txid, vout-index: vout-index})) 
+              (err u406))
     
     ;; Insert into maps
     (map-insert deposit-status {txid: txid, vout-index: vout-index} true)
