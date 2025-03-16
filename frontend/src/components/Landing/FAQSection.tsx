@@ -20,7 +20,7 @@
 //   },
 //   {
 //     question: "Which DeFi protocols are integrated with the platform?",
-//     answer: "sBTC Yield Nexus integrates with leading Stacks ecosystem protocols including ALEX (liquidity pools, options), Arkadiko (lending, stablecoin minting), Bitflow (yield aggregation), StackSwap (DEX, farms), and Velar (stablecoin pools). Each protocol undergoes a comprehensive security assessment before integration, and we continuously monitor their performance and security metrics. New protocols are added regularly after passing our rigorous evaluation process.",
+//     answer: "sBTC Yield Nexus integrates with leading Stacks ecosystem protocols including ALEX (liquidity pools, options), VELAR (lending, stablecoin minting), Bitflow (yield aggregation), StackSwap (DEX, farms), and Velar (stablecoin pools). Each protocol undergoes a comprehensive security assessment before integration, and we continuously monitor their performance and security metrics. New protocols are added regularly after passing our rigorous evaluation process.",
 //     icon: <BarChart3 className="w-5 h-5" />
 //   },
 //   {
@@ -415,7 +415,7 @@ const faqs = [
   },
   {
     question: "Which DeFi protocols are integrated with the platform?",
-    answer: "sBTC Yield Nexus integrates with leading Stacks ecosystem protocols including ALEX (liquidity pools, options), Arkadiko (lending, stablecoin minting), Bitflow (yield aggregation), StackSwap (DEX, farms), and Velar (stablecoin pools). Each protocol undergoes a comprehensive security assessment before integration, and we continuously monitor their performance and security metrics. New protocols are added regularly after passing our rigorous evaluation process.",
+    answer: "sBTC Yield Nexus integrates with leading Stacks ecosystem protocols including ALEX (liquidity pools, options), VELAR (lending, stablecoin minting), Bitflow (yield aggregation), StackSwap (DEX, farms), and Velar (stablecoin pools). Each protocol undergoes a comprehensive security assessment before integration, and we continuously monitor their performance and security metrics. New protocols are added regularly after passing our rigorous evaluation process.",
     icon: <BarChart3 className="w-5 h-5" />
   },
   {
