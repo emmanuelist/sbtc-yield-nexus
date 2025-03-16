@@ -115,33 +115,42 @@
 )
 
 (define-public (execute-strategy (strategy-id uint) (amount uint))
-  (let
-    (
-      (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
-      (protocols (get protocols strategy))
-      (current-tvl (get tvl strategy))
-    )
-    ;; Input validation
-    (asserts! (> amount u0) (err u216))
-    (asserts! (< (+ current-tvl amount) u1000000000000) (err u217)) ;; Overflow protection
+  (begin
+    ;; Validate strategy-id is within bounds
+    (asserts! (< strategy-id (var-get strategy-nonce)) (err u220))
     
-    ;; Verify the strategy is active
-    (asserts! (get active strategy) (err u203))
-    
-    ;; Update TVL
-    (map-set strategies 
-      {strategy-id: strategy-id}
-      (merge strategy {tvl: (+ current-tvl amount)})
-    )
-    
-    ;; Call risk engine to update protocol allocations
     (let
       (
-        (allocations (unwrap! (contract-call? .risk-engine get-allocations strategy-id protocols) (err u204)))
+        (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
+        (protocols (get protocols strategy))
+        (current-tvl (get tvl strategy))
       )
-      ;; Distribute funds according to allocations
-      (try! (execute-allocations allocations amount))
-      (ok true)
+      ;; Input validation
+      (asserts! (> amount u0) (err u216))
+      (asserts! (< (+ current-tvl amount) u1000000000000) (err u217)) ;; Overflow protection
+      
+      ;; Verify the strategy is active
+      (asserts! (get active strategy) (err u203))
+      
+      ;; Update TVL
+      (map-set strategies 
+        {strategy-id: strategy-id}
+        (merge strategy {tvl: (+ current-tvl amount)})
+      )
+      
+      ;; Call risk engine to update protocol allocations
+      (let
+        (
+          (allocations (unwrap! (contract-call? .risk-engine get-allocations strategy-id protocols) (err u204)))
+        )
+        ;; Validate allocations
+        (asserts! (> (len allocations) u0) (err u221))
+        (asserts! (<= (len allocations) u10) (err u222))
+        
+        ;; Distribute funds according to allocations
+        (try! (execute-allocations allocations amount))
+        (ok true)
+      )
     )
   )
 )
