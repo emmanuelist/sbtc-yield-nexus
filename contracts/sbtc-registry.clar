@@ -207,6 +207,12 @@
 	)
 	(begin
 		(try! (is-protocol-caller withdrawal-role contract-caller))
+
+		;; Validate that the request exists
+    	(asserts! (is-some (map-get? withdrawal-requests request-id)) ERR_INVALID_REQUEST_ID)
+    
+    	;; Check if the request has already been processed
+    	(asserts! (is-none (map-get? withdrawal-status request-id)) (err u403))
 		;; Mark the withdrawal as completed
 		(map-insert withdrawal-status request-id true)
 		(map-insert completed-withdrawal-sweep request-id {
@@ -269,6 +275,11 @@
 	)
 	(begin
 		(try! (is-protocol-caller deposit-role contract-caller))
+		;; Check that the deposit hasn't already been processed
+    	(asserts! (is-none (map-get? deposit-status {txid: txid, vout-index: vout-index})) (err u404))
+    
+    	;; Validate amount is not zero
+    	(asserts! (> amount u0) (err u405))
 		(map-insert deposit-status {txid: txid, vout-index: vout-index} true)
 		(map-insert completed-deposits {txid: txid, vout-index: vout-index} {
 			amount: amount,
@@ -303,6 +314,13 @@
 		(try! (is-protocol-caller governance-role contract-caller))
 		;; Check that the aggregate pubkey is not already in the map
 		(asserts! (map-insert aggregate-pubkeys new-aggregate-pubkey true) ERR_AGG_PUBKEY_REPLAY)
+
+		 ;; Validate new keys are not empty
+    	(asserts! (> (len new-keys) u0) (err u406))
+    
+    	;; Validate new threshold is valid (not zero and not greater than key count)
+    	(asserts! (and (> new-signature-threshold u0) (<= new-signature-threshold (len new-keys))) (err u407))
+
 		;; Update the current signer set
 		(var-set current-signer-set new-keys)
 		;; Update the current multi-sig address
@@ -331,6 +349,13 @@
 	(begin
 		;; Check that caller is protocol contract
 		(try! (is-protocol-caller governance-role contract-caller))
+
+		;; Validate contract type is one of the defined roles
+    	(asserts! (or 
+                (is-eq contract-type governance-role)
+                (is-eq contract-type deposit-role)
+                (is-eq contract-type withdrawal-role)) 
+              (err u408))
 		;; Update the protocol contract
 		(map-set active-protocol-contracts contract-type new-contract)
 		;; Update the protocol role
