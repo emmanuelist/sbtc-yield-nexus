@@ -61,6 +61,7 @@
         active: true
       }
     )
+    (asserts! (not (is-eq contract-address tx-sender)) (err u219))
     
     ;; Increment nonce
     (var-set protocol-nonce (+ protocol-id u1))
@@ -232,26 +233,32 @@
 
 ;; Emergency withdraw from all protocols
 (define-public (emergency-withdraw-all (strategy-id uint))
-  (let
-    (
-      (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
-      (protocols (get protocols strategy))
-      (current-tvl (get tvl strategy))
+  (begin
+    ;; Validate strategy-id is within bounds
+    (asserts! (< strategy-id (var-get strategy-nonce)) (err u220))
+
+    (let
+      (
+        (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
+        (protocols (get protocols strategy))
+        (current-tvl (get tvl strategy))
+      )
+      ;; Verify caller is governance
+      (asserts! (is-eq tx-sender (contract-call? .governance get-governor)) (err u200))
+      
+      ;; Force withdraw from all protocols
+      (try! (emergency-withdraw-from-protocols protocols))
+      
+      ;; Mark strategy as inactive
+      (map-set strategies 
+        {strategy-id: strategy-id}
+        (merge strategy {active: false})
+      )
+      
+      (ok true)
     )
-    ;; Verify caller is governance
-    (asserts! (is-eq tx-sender (contract-call? .governance get-governor)) (err u200))
-    
-    ;; Force withdraw from all protocols
-    (try! (emergency-withdraw-from-protocols protocols))
-    
-    ;; Mark strategy as inactive
-    (map-set strategies 
-      {strategy-id: strategy-id}
-      (merge strategy {active: false})
-    )
-    
-    (ok true)
   )
+  
 )
 
 (define-private (emergency-withdraw-from-protocols (protocol-ids (list 10 uint)))
