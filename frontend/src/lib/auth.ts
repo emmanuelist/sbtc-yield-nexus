@@ -6,7 +6,7 @@ export const userSession = new UserSession({ appConfig });
 export function authenticate() {
   showConnect({
     appDetails: {
-      name: "TipStack",
+      name: "sBTC Yield Nexus",
       icon: "https://raw.githubusercontent.com/stacksgov/stacksgov.github.io/master/img/stacks-logo.svg",
     },
     redirectTo: "/",

@@ -6,7 +6,7 @@ export const NETWORK_CONFIG = {
 // Contract configuration
 export const CONTRACT_CONFIG = {
     ADDRESS: 'STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6',
-    NAME: 'tip-stacks',
+    NAME: 'sbtc-yield-nexus',
 };
 
 // App configuration
