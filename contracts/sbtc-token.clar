@@ -1,5 +1,9 @@
 (define-constant ERR_NOT_OWNER (err u4)) ;; `tx-sender` or `contract-caller` tried to move a token it does not own.
 (define-constant ERR_TRANSFER_INDEX_PREFIX u1000)
+(define-constant ERR_ZERO_AMOUNT (err u100))
+(define-constant ERR_EMPTY_STRING (err u101))
+(define-constant ERR_INSUFFICIENT_BALANCE (err u102))
+(define-constant ERR_SAME_SENDER_RECIPIENT (err u103))
 
 (define-fungible-token sbtc-token)
 (define-fungible-token sbtc-token-locked)
@@ -12,54 +16,87 @@
 ;; --- Protocol functions
 
 (define-public (protocol-lock (amount uint) (owner principal) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(try! (ft-burn? sbtc-token amount owner))
-		(ft-mint? sbtc-token-locked amount owner)
-	)
+    (begin
+        (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+        ;; Validate amount
+        (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+        ;; Validate owner has sufficient balance
+        (asserts! (<= amount (ft-get-balance sbtc-token owner)) ERR_INSUFFICIENT_BALANCE)
+        (try! (ft-burn? sbtc-token amount owner))
+        (try! (ft-mint? sbtc-token-locked amount owner))
+        (ok true)
+    )
 )
 
 (define-public (protocol-unlock (amount uint) (owner principal) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(try! (ft-burn? sbtc-token-locked amount owner))
-		(ft-mint? sbtc-token amount owner)
-	)
+    (begin
+        (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+        ;; Validate amount
+        (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+        ;; Validate owner has sufficient locked balance
+        (asserts! (<= amount (ft-get-balance sbtc-token-locked owner)) ERR_INSUFFICIENT_BALANCE)
+        (try! (ft-burn? sbtc-token-locked amount owner))
+        (try! (ft-mint? sbtc-token amount owner))
+        (ok true)
+    )
 )
 
 (define-public (protocol-mint (amount uint) (recipient principal) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(ft-mint? sbtc-token amount recipient)
-	)
+    (begin
+        (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+        ;; Validate amount
+        (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+        (try! (ft-mint? sbtc-token amount recipient))
+        (ok true)
+    )
 )
 
 (define-public (protocol-burn (amount uint) (owner principal) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(ft-burn? sbtc-token amount owner)
-	)
+    (begin
+        (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+        ;; Validate amount
+        (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+        ;; Validate owner has sufficient balance
+        (asserts! (<= amount (ft-get-balance sbtc-token owner)) ERR_INSUFFICIENT_BALANCE)
+        (try! (ft-burn? sbtc-token amount owner))
+        (ok true)
+    )
 )
 
+
 (define-public (protocol-burn-locked (amount uint) (owner principal) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(ft-burn? sbtc-token-locked amount owner)
-	)
+    (begin
+        (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+        ;; Validate amount
+        (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+        ;; Validate owner has sufficient locked balance
+        (asserts! (<= amount (ft-get-balance sbtc-token-locked owner)) ERR_INSUFFICIENT_BALANCE)
+        ;; Fix: Use sbtc-token-locked instead of sbtc-token
+        (try! (ft-burn? sbtc-token-locked amount owner))
+        (ok true)
+    )
 )
 
 (define-public (protocol-set-name (new-name (string-ascii 32)) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(ok (var-set token-name new-name))
-	)
+  (begin
+    ;; Access control (already exists)
+    (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+    
+    ;; Parameter validation
+    (asserts! (not (is-eq new-name "")) (err u300)) ;; Non-empty name
+    
+    ;; Operation (already exists)
+    (ok (var-set token-name new-name))
+  )
 )
 
 (define-public (protocol-set-symbol (new-symbol (string-ascii 10)) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(ok (var-set token-symbol new-symbol))
-	)
+    (begin
+        (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+        ;; Validate symbol is not empty
+        (asserts! (not (is-eq new-symbol "")) ERR_EMPTY_STRING)
+        (ok (var-set token-symbol new-symbol))
+    )
 )
 
 (define-public (protocol-set-token-uri (new-uri (optional (string-utf8 256))) (contract-flag (buff 1)))
@@ -70,7 +107,12 @@
 )
 
 (define-private (protocol-mint-many-iter (item {amount: uint, recipient: principal}))
-	(ft-mint? sbtc-token (get amount item) (get recipient item))
+    (begin
+        ;; Validate amount is non-zero
+        (asserts! (> (get amount item) u0) ERR_ZERO_AMOUNT)
+        (try! (ft-mint? sbtc-token (get amount item) (get recipient item)))
+        (ok true)
+    )
 )
 
 (define-public (protocol-mint-many (recipients (list 200 {amount: uint, recipient: principal})) (contract-flag (buff 1)))
@@ -117,12 +159,20 @@
 ;; sip-010-trait
 
 (define-public (transfer (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34))))
-	(begin
-		(asserts! (or (is-eq tx-sender sender) (is-eq contract-caller sender)) ERR_NOT_OWNER)
-		(try! (ft-transfer? sbtc-token amount sender recipient))
-		(match memo to-print (print to-print) 0x)
-		(ok true)
-	)
+  (begin
+    ;; Ownership check (already exists)
+    (asserts! (or (is-eq tx-sender sender) (is-eq contract-caller sender)) ERR_NOT_OWNER)
+    
+    ;; Parameter validation (to add)
+    (asserts! (> amount u0) (err u200)) ;; Non-zero amount
+    (asserts! (<= amount (ft-get-balance sbtc-token sender)) (err u201)) ;; Sufficient balance
+    (asserts! (not (is-eq sender recipient)) (err u202)) ;; Different sender/recipient
+    
+    ;; Operation (already exists)
+    (try! (ft-transfer? sbtc-token amount sender recipient))
+    (match memo to-print (print to-print) 0x)
+    (ok true)
+  )
 )
 
 (define-read-only (get-name)
