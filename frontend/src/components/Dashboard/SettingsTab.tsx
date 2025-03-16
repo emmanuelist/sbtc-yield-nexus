@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Settings,
     User,
@@ -15,6 +15,16 @@ import {
     Info,
     Check
 } from 'lucide-react';
+
+import {
+    authenticate,
+    getUserData,
+    signUserOut,
+    userSession,
+} from '@/lib/auth';
+import { useAppContext } from '@/context/AppContext';
+import toast from 'react-hot-toast';
+import { UserData } from '@/lib/type';
 
 // Define types for settings
 interface WalletInfo {
@@ -73,17 +83,68 @@ interface SettingsTabProps {
 
 const SettingsTab: React.FC<SettingsTabProps> = ({
     settings,
-    onSaveSettings,
-    onDisconnectWallet
+    onSaveSettings
 }) => {
     const [activeSection, setActiveSection] = useState<'account' | 'notifications' | 'security' | 'display' | 'integrations'>('account');
     const [localSettings, setLocalSettings] = useState<DashboardSettings>(settings);
     const [showSaveSuccess, setShowSaveSuccess] = useState<boolean>(false);
+    const { setWalletAddress, setWalletConnected } = useAppContext();
+    const [_userData, setUserData] = useState<UserData | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [_scrolled, setScrolled] = useState(false);
+
 
     const handleSaveSettings = () => {
         onSaveSettings(localSettings);
         setShowSaveSuccess(true);
         setTimeout(() => setShowSaveSuccess(false), 3000);
+    };
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            if (userSession.isSignInPending()) {
+                const userData = await userSession.handlePendingSignIn();
+                setIsAuthenticated(true);
+                setUserData(userData);
+                setWalletAddress(userData?.profile?.stxAddress?.testnet ?? null);
+                setWalletConnected(true);
+                toast.success("Wallet connected successfully");
+            } else if (userSession.isUserSignedIn()) {
+                const userData = getUserData();
+                setIsAuthenticated(true);
+                setUserData(userData);
+                setWalletAddress(userData?.profile?.stxAddress?.testnet ?? null);
+                setWalletConnected(true);
+            }
+        };
+
+        checkAuth();
+
+        // Add scroll event listener
+        const handleScroll = () => {
+            if (window.scrollY > 10) {
+                setScrolled(true);
+            } else {
+                setScrolled(false);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
+
+    const handleAuth = () => {
+        if (isAuthenticated) {
+            signUserOut();
+            setWalletAddress(null);
+            setIsAuthenticated(false);
+            setWalletConnected(false);
+            toast.success("Wallet disconnected successfully");
+        } else {
+            authenticate();
+        }
     };
 
     const updateNotificationSetting = (key: keyof NotificationSettings, value: boolean) => {
@@ -146,8 +207,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                         <button
                             onClick={() => setActiveSection('account')}
                             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${activeSection === 'account'
-                                    ? 'bg-indigo-50 text-indigo-700 font-medium'
-                                    : 'text-gray-700 hover:bg-gray-50'
+                                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <User className="w-5 h-5 mr-3" />
@@ -157,8 +218,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                         <button
                             onClick={() => setActiveSection('notifications')}
                             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${activeSection === 'notifications'
-                                    ? 'bg-indigo-50 text-indigo-700 font-medium'
-                                    : 'text-gray-700 hover:bg-gray-50'
+                                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <Bell className="w-5 h-5 mr-3" />
@@ -168,8 +229,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                         <button
                             onClick={() => setActiveSection('security')}
                             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${activeSection === 'security'
-                                    ? 'bg-indigo-50 text-indigo-700 font-medium'
-                                    : 'text-gray-700 hover:bg-gray-50'
+                                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <Shield className="w-5 h-5 mr-3" />
@@ -179,8 +240,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                         <button
                             onClick={() => setActiveSection('display')}
                             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${activeSection === 'display'
-                                    ? 'bg-indigo-50 text-indigo-700 font-medium'
-                                    : 'text-gray-700 hover:bg-gray-50'
+                                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <Globe className="w-5 h-5 mr-3" />
@@ -190,8 +251,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                         <button
                             onClick={() => setActiveSection('integrations')}
                             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${activeSection === 'integrations'
-                                    ? 'bg-indigo-50 text-indigo-700 font-medium'
-                                    : 'text-gray-700 hover:bg-gray-50'
+                                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <ExternalLink className="w-5 h-5 mr-3" />
@@ -267,7 +328,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                                 <div className="mt-4 pt-4 border-t border-indigo-100/50 flex">
                                     <button
                                         className="text-sm px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
-                                        onClick={onDisconnectWallet}
+                                        onClick={handleAuth}
                                     >
                                         Disconnect Wallet
                                     </button>
@@ -720,8 +781,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div
                                         className={`p-4 border rounded-lg cursor-pointer transition-colors ${localSettings.display.theme === 'light'
-                                                ? 'border-indigo-300 bg-indigo-50'
-                                                : 'border-gray-200 hover:bg-gray-50'
+                                            ? 'border-indigo-300 bg-indigo-50'
+                                            : 'border-gray-200 hover:bg-gray-50'
                                             }`}
                                         onClick={() => updateDisplaySetting('theme', 'light')}
                                     >
@@ -734,8 +795,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 
                                     <div
                                         className={`p-4 border rounded-lg cursor-pointer transition-colors ${localSettings.display.theme === 'dark'
-                                                ? 'border-indigo-300 bg-indigo-50'
-                                                : 'border-gray-200 hover:bg-gray-50'
+                                            ? 'border-indigo-300 bg-indigo-50'
+                                            : 'border-gray-200 hover:bg-gray-50'
                                             }`}
                                         onClick={() => updateDisplaySetting('theme', 'dark')}
                                     >
@@ -748,8 +809,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 
                                     <div
                                         className={`p-4 border rounded-lg cursor-pointer transition-colors ${localSettings.display.theme === 'system'
-                                                ? 'border-indigo-300 bg-indigo-50'
-                                                : 'border-gray-200 hover:bg-gray-50'
+                                            ? 'border-indigo-300 bg-indigo-50'
+                                            : 'border-gray-200 hover:bg-gray-50'
                                             }`}
                                         onClick={() => updateDisplaySetting('theme', 'system')}
                                     >
@@ -859,8 +920,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                                             <button
                                                 onClick={() => toggleIntegrationConnection(integration.id)}
                                                 className={`text-xs px-3 py-1.5 rounded-lg ${integration.connected
-                                                        ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                                                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                    ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
                                                     }`}
                                             >
                                                 {integration.connected ? 'Disconnect' : 'Connect'}
@@ -892,8 +953,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                                             <button
                                                 onClick={() => toggleIntegrationConnection(integration.id)}
                                                 className={`text-xs px-3 py-1.5 rounded-lg ${integration.connected
-                                                        ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                                                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                    ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
                                                     }`}
                                             >
                                                 {integration.connected ? 'Disconnect' : 'Connect'}
