@@ -31,6 +31,10 @@
   (is-some (map-get? strategies {strategy-id: strategy-id}))
 )
 
+(define-read-only (protocol-exists (protocol-id uint))
+  (is-some (map-get? protocol-integrations {protocol-id: protocol-id}))
+)
+
 (define-public (register-protocol 
   (name (string-ascii 64)) 
   (contract-address principal) 
@@ -195,38 +199,43 @@
 )
 
 (define-public (withdraw-from-strategy (strategy-id uint) (amount uint))
-  (let
-    (
-      (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
-      (protocols (get protocols strategy))
-      (current-tvl (get tvl strategy))
-    )
-    ;; Verify the strategy is active
-    (asserts! (get active strategy) (err u203))
+  (begin
+    ;; Validate strategy-id is within bounds
+    (asserts! (< strategy-id (var-get strategy-nonce)) (err u220))
     
-    ;; Verify sufficient TVL
-    (asserts! (>= current-tvl amount) (err u206))
-    
-    ;; Update TVL
-    (map-set strategies 
-      {strategy-id: strategy-id}
-      (merge strategy {tvl: (- current-tvl amount)})
-    )
-    
-    ;; Calculate withdrawal from each protocol
     (let
       (
-        (allocations (unwrap! (contract-call? .risk-engine get-allocations strategy-id protocols) (err u204)))
+        (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
+        (protocols (get protocols strategy))
+        (current-tvl (get tvl strategy))
       )
+      ;; Verify the strategy is active
+      (asserts! (get active strategy) (err u203))
+      
+      ;; Verify sufficient TVL
+      (asserts! (>= current-tvl amount) (err u206))
+      
+      ;; Update TVL
+      (map-set strategies 
+        {strategy-id: strategy-id}
+        (merge strategy {tvl: (- current-tvl amount)})
+      )
+      
+      ;; Calculate withdrawal from each protocol
+      (let
+        (
+          (allocations (unwrap! (contract-call? .risk-engine get-allocations strategy-id protocols) (err u204)))
+        )
 
-      ;; Add validation for allocations
-      (asserts! (> (len allocations) u0) (err u221))
-      (asserts! (<= (len allocations) u10) (err u222))
-      (try! (validate-allocations allocations))  ;; Reuse the helper function
+        ;; Add validation for allocations
+        (asserts! (> (len allocations) u0) (err u221))
+        (asserts! (<= (len allocations) u10) (err u222))
+        (try! (validate-allocations allocations))  ;; Reuse the helper function
 
-      ;; Handle withdrawals from protocols
-      (try! (execute-withdrawals allocations amount))
-      (ok true)
+        ;; Handle withdrawals from protocols
+        (try! (execute-withdrawals allocations amount))
+        (ok true)
+      )
     )
   )
 )
@@ -339,20 +348,28 @@
 
 ;; Function to update protocol status
 (define-public (set-protocol-status (protocol-id uint) (active bool))
-  (let
-    (
-      (protocol (unwrap! (map-get? protocol-integrations {protocol-id: protocol-id}) (err u205)))
-    )
-    ;; Verify caller is governance
-    (asserts! (is-eq tx-sender (contract-call? .governance get-governor)) (err u200))
+  (begin
+    ;; Validate protocol-id is within bounds
+    (asserts! (< protocol-id (var-get protocol-nonce)) (err u230))
     
-    ;; Update protocol status
-    (map-set protocol-integrations 
-      {protocol-id: protocol-id}
-      (merge protocol {active: active})
-    )
+    ;; Verify protocol exists
+    (asserts! (protocol-exists protocol-id) (err u205))
     
-    (ok true)
+    (let
+      (
+        (protocol (unwrap! (map-get? protocol-integrations {protocol-id: protocol-id}) (err u205)))
+      )
+      ;; Verify caller is governance
+      (asserts! (is-eq tx-sender (contract-call? .governance get-governor)) (err u200))
+      
+      ;; Update protocol status
+      (map-set protocol-integrations 
+        {protocol-id: protocol-id}
+        (merge protocol {active: active})
+      )
+      
+      (ok true)
+    )
   )
 )
 
@@ -369,59 +386,77 @@
 (define-data-var timelock-period uint u144) ;; ~1 day in blocks
 
 (define-public (propose-strategy-update (strategy-id uint) (new-protocols (list 10 uint)))
-  (let
-    (
-      (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
-      (caller tx-sender)
+  (begin
+    ;; Validate strategy-id is within bounds
+    (asserts! (< strategy-id (var-get strategy-nonce)) (err u220))
+    
+    ;; Verify strategy exists
+    (asserts! (strategy-exists strategy-id) (err u202))
+    
+    (let
+      (
+        (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
+        (caller tx-sender)
+      )
+      ;; Verify caller is owner or governance
+      (asserts! (or (is-eq caller (get creator strategy)) 
+                   (is-eq caller (contract-call? .governance get-governor))) 
+               (err u207))
+      
+      ;; Verify all protocols exist and are active
+      (asserts! (fold check-protocols new-protocols true) (err u201))
+      
+      ;; Register proposal
+      (map-set strategy-change-proposals
+        {strategy-id: strategy-id}
+        {
+          proposed-protocols: new-protocols,
+          proposed-at: stacks-block-height,
+          proposer: caller
+        }
+      )
+      
+      (ok true)
     )
-    ;; Verify caller is owner or governance
-    (asserts! (or (is-eq caller (get creator strategy)) 
-                 (is-eq caller (contract-call? .governance get-governor))) 
-             (err u207))
-    
-    ;; Verify all protocols exist and are active
-    (asserts! (fold check-protocols new-protocols true) (err u201))
-    
-    ;; Register proposal
-    (map-set strategy-change-proposals
-      {strategy-id: strategy-id}
-      {
-        proposed-protocols: new-protocols,
-        proposed-at: stacks-block-height,
-        proposer: caller
-      }
-    )
-    
-    (ok true)
   )
 )
 
 
 (define-public (execute-strategy-update (strategy-id uint))
-  (let
-    (
-      (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
-      (proposal (unwrap! (map-get? strategy-change-proposals {strategy-id: strategy-id}) (err u208)))
-      (caller tx-sender)
-      (timelock (var-get timelock-period))
+  (begin
+    ;; Validate strategy-id is within bounds
+    (asserts! (< strategy-id (var-get strategy-nonce)) (err u220))
+    
+    ;; Verify strategy exists
+    (asserts! (strategy-exists strategy-id) (err u202))
+    ;; Verify proposal exists
+    (asserts! (is-some (map-get? strategy-change-proposals {strategy-id: strategy-id})) (err u208))
+    
+    (let
+      (
+        (strategy (unwrap! (map-get? strategies {strategy-id: strategy-id}) (err u202)))
+        (proposal (unwrap! (map-get? strategy-change-proposals {strategy-id: strategy-id}) (err u208)))
+        (caller tx-sender)
+        (timelock (var-get timelock-period))
+      )
+      ;; Verify caller is owner or governance
+      (asserts! (or (is-eq caller (get creator strategy)) 
+                   (is-eq caller (contract-call? .governance get-governor))) 
+               (err u207))
+      
+      ;; Verify timelock has passed
+      (asserts! (>= (- stacks-block-height (get proposed-at proposal)) timelock) (err u209))
+      
+      ;; Update strategy protocols
+      (map-set strategies 
+        {strategy-id: strategy-id}
+        (merge strategy {protocols: (get proposed-protocols proposal)})
+      )
+      
+      ;; Clean up proposal
+      (map-delete strategy-change-proposals {strategy-id: strategy-id})
+      
+      (ok true)
     )
-    ;; Verify caller is owner or governance
-    (asserts! (or (is-eq caller (get creator strategy)) 
-                 (is-eq caller (contract-call? .governance get-governor))) 
-             (err u207))
-    
-    ;; Verify timelock has passed
-    (asserts! (>= (- stacks-block-height (get proposed-at proposal)) timelock) (err u209))
-    
-    ;; Update strategy protocols
-    (map-set strategies 
-      {strategy-id: strategy-id}
-      (merge strategy {protocols: (get proposed-protocols proposal)})
-    )
-    
-    ;; Clean up proposal
-    (map-delete strategy-change-proposals {strategy-id: strategy-id})
-    
-    (ok true)
   )
 )
