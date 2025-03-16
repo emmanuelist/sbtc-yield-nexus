@@ -46,6 +46,14 @@
         (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
         ;; Validate amount
         (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+        
+        ;; For principal validation, we can add a check that it's not equal to the contract itself
+        ;; This is a common validation for recipients
+        (asserts! (not (is-eq recipient (as-contract tx-sender))) (err u104))
+        
+        ;; Alternatively, we can check against a list of known restricted addresses
+        ;; (asserts! (not (is-eq recipient contract-caller)) (err u105))
+        
         (try! (ft-mint? sbtc-token amount recipient))
         (ok true)
     )
@@ -100,10 +108,21 @@
 )
 
 (define-public (protocol-set-token-uri (new-uri (optional (string-utf8 256))) (contract-flag (buff 1)))
-	(begin
-		(try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
-		(ok (var-set token-uri new-uri))
-	)
+    (begin
+        (try! (contract-call? .sbtc-registry is-protocol-caller contract-flag contract-caller))
+        
+        ;; For optional values, we can validate by checking if it exists
+        (match new-uri
+            some-uri 
+                (begin
+                    ;; Check the URI isn't empty if it's provided
+                    (asserts! (> (len some-uri) u0) ERR_EMPTY_STRING)
+                    (ok (var-set token-uri new-uri))
+                )
+            ;; If it's none, we accept it (allows clearing the URI)
+            (ok (var-set token-uri none))
+        )
+    )
 )
 
 (define-private (protocol-mint-many-iter (item {amount: uint, recipient: principal}))
