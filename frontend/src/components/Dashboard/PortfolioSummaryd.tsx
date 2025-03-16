@@ -125,7 +125,7 @@
 // export default PortfolioSummary;
 
 import React, { useEffect, useRef } from 'react';
-import { PieChart, Activity, TrendingUp, Info, Sparkles, Zap, ArrowUpRight, Plus, RefreshCw } from 'lucide-react';
+import { PieChart, TrendingUp, Sparkles, Zap, ArrowUpRight, Plus, RefreshCw } from 'lucide-react';
 
 // Define TypeScript interfaces for props
 interface AllocationItem {

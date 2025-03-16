@@ -1,4 +1,4 @@
-import { ChevronRight, Mail, Sparkles } from "lucide-react";
+import { ChevronRight, Sparkles } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 export const NewsletterSection: React.FC = () => {

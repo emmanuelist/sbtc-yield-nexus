@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 export const CTASection: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [userData, setUserData] = useState<UserData | null>(null);
+    const [_userData, setUserData] = useState<UserData | null>(null);
 
     const { walletAddress, setWalletAddress, setCurrentPage, setWalletConnected } = useAppContext();
 

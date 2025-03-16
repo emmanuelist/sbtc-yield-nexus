@@ -96,7 +96,7 @@ interface Strategy {
 interface DashboardProps { }
 
 export const Dashboard: React.FC<DashboardProps> = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [_isLoading, setIsLoading] = useState<boolean>(true);
   // Add 'settings' to your activeTab type
   const [activeTab, setActiveTab] = useState<'overview' | 'strategies' | 'protocols' | 'tax' | 'settings'>('overview');
   const { walletAddress } = useAppContext();

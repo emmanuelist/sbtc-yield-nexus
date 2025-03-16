@@ -11,7 +11,7 @@ import { UserData } from '@/lib/type';
 import toast from 'react-hot-toast';
 
 export const Navbar = () => {
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [_userData, setUserData] = useState<UserData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 

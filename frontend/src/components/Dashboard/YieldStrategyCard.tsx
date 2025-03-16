@@ -53,6 +53,7 @@ const YieldStrategyCard: React.FC<YieldStrategyCardProps> = ({ strategy, isActiv
     };
 
     const getBackgroundColor = (type: StrategyType): string => {
+        console.log(type);
         if (isActive) return 'bg-gradient-to-r from-amber-50 to-yellow-50';
         return 'bg-white';
     };

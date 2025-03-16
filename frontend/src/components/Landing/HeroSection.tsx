@@ -18,10 +18,10 @@ interface HeroSectionProps { }
 
 export const HeroSection: React.FC<HeroSectionProps> = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [_userData, setUserData] = useState<UserData | null>(null);
   const [isStrategyWizardOpen, setIsStrategyWizardOpen] = useState<boolean>(false);
 
-  const { walletAddress, setWalletAddress, setWalletConnected, setCurrentPage } = useAppContext();
+  const { setWalletAddress, setWalletConnected, setCurrentPage } = useAppContext();
 
   useEffect(() => {
     const checkAuth = async () => {
