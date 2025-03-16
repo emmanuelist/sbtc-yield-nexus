@@ -20,12 +20,10 @@
 ;; Maps
 ;; Active protocol contracts
 (define-map active-protocol-contracts (buff 1) principal)
-(map-set active-protocol-contracts governance-role .sbtc-bootstrap-signers)
 (map-set active-protocol-contracts deposit-role .sbtc-deposit)
 (map-set active-protocol-contracts withdrawal-role .sbtc-withdrawal)
 ;; Role for active protocol contracts
 (define-map active-protocol-roles principal (buff 1))
-(map-set active-protocol-roles .sbtc-bootstrap-signers governance-role)
 (map-set active-protocol-roles .sbtc-deposit deposit-role)
 (map-set active-protocol-roles .sbtc-withdrawal withdrawal-role)
 ;; Internal data structure to store withdrawal

@@ -117,7 +117,8 @@
                 (begin
                     ;; Check the URI isn't empty if it's provided
                     (asserts! (> (len some-uri) u0) ERR_EMPTY_STRING)
-                    (ok (var-set token-uri new-uri))
+                    ;; Use the value we already validated
+                    (ok (var-set token-uri (some some-uri)))
                 )
             ;; If it's none, we accept it (allows clearing the URI)
             (ok (var-set token-uri none))
