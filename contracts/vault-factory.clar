@@ -29,7 +29,7 @@
         owner: caller,
         strategy-id: strategy-id,
         sbtc-balance: u0,
-        created-at: block-height,
+        created-at: stacks-block-height,
         active: true
       }
     )
@@ -148,8 +148,11 @@
 (define-read-only (get-vault-balance (vault-id uint))
   (let
     (
-      (vault (unwrap! (map-get? vaults {vault-id: vault-id}) (err u101)))
+      (vault (map-get? vaults {vault-id: vault-id}))
     )
-    (get sbtc-balance vault)
+    (if (is-some vault)
+      (ok (get sbtc-balance (unwrap-panic vault)))
+      (err u101)
+    )
   )
 )
