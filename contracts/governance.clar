@@ -18,7 +18,14 @@
 
 (define-public (set-governor (new-governor principal))
   (begin
+    ;; Authorization check
     (asserts! (is-eq tx-sender (var-get governor)) (err u1))
+    
+    ;; Validate input - prevent setting to zero address or burn addresses
+    (asserts! (not (is-eq new-governor 'SP000000000000000000002Q6VF78)) (err u100))
+    (asserts! (not (is-eq new-governor 'STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6)) (err u101))
+    
+    ;; Set the new governor
     (var-set governor new-governor)
     (ok true)
   )
@@ -26,7 +33,14 @@
 
 (define-public (set-risk-oracle (new-oracle principal))
   (begin
+    ;; Authorization check
     (asserts! (is-eq tx-sender (var-get governor)) (err u1))
+    
+    ;; Validate input - prevent setting to zero address or burn addresses
+    (asserts! (not (is-eq new-oracle 'SP000000000000000000002Q6VF78)) (err u100))
+    (asserts! (not (is-eq new-oracle 'STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6)) (err u101))
+    
+    ;; Set the new risk oracle
     (var-set risk-oracle new-oracle)
     (ok true)
   )
@@ -34,7 +48,14 @@
 
 (define-public (set-yield-harvester (new-harvester principal))
   (begin
+    ;; Authorization check
     (asserts! (is-eq tx-sender (var-get governor)) (err u1))
+    
+    ;; Validate input - prevent setting to zero address or burn addresses
+    (asserts! (not (is-eq new-harvester 'SP000000000000000000002Q6VF78)) (err u100))
+    (asserts! (not (is-eq new-harvester 'STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6)) (err u101))
+    
+    ;; Set the new yield harvester
     (var-set yield-harvester new-harvester)
     (ok true)
   )
