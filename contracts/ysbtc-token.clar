@@ -15,7 +15,7 @@
     (asserts! (> amount u0) (err u500)) ;; Amount must be positive
     
     ;; Check that user has sufficient balance
-    (asserts! (>= (contract-call? .sbtc-token get-balance caller) amount) (err u501))
+    (asserts! (>= (unwrap! (contract-call? .sbtc-token get-balance caller) (err u501)) amount) (err u501))
     
     ;; Calculate ysBTC amount
     (let
@@ -92,7 +92,8 @@
     ;; Get current sBTC balance from vault
     (let
       (
-        (vault-balance (contract-call? .vault-factory get-vault-balance u0))
+        (vault-balance-result (contract-call? .vault-factory get-vault-balance u0))
+        (vault-balance (unwrap! vault-balance-result (err u507)))
         (total-locked (var-get total-sbtc-locked))
       )
       ;; Validate vault balance
