@@ -86,7 +86,7 @@
         protocols: protocols,
         active: true,
         tvl: u0,
-        creation-height: block-height
+        creation-height: stacks-block-height
       }
     )
     
@@ -226,6 +226,30 @@
         ;; Try to withdraw all funds from protocol
         ;; Use a maximum value for amount to get everything
         (contract-call? .dynamic-caller execute contract-addr withdraw-fn u1000000000000)
+      )
+    error (err error)
+  )
+)
+
+;; Function to execute withdrawals from protocols based on allocations
+(define-private (execute-withdrawals (allocations (list 10 {protocol-id: uint, percentage: uint})) (total-amount uint))
+  (fold execute-withdrawal allocations (ok true))
+)
+
+(define-private (execute-withdrawal (allocation {protocol-id: uint, percentage: uint}) (previous-result (response bool uint)))
+  (match previous-result
+    success
+      (let
+        (
+          (protocol-id (get protocol-id allocation))
+          (percentage (get percentage allocation))
+          (protocol (unwrap! (map-get? protocol-integrations {protocol-id: protocol-id}) (err u205)))
+          (contract-addr (get contract-address protocol))
+          (withdraw-fn (get function-withdraw protocol))
+          (amount-to-withdraw (/ (* percentage total-amount) u10000))
+        )
+        ;; Execute dynamic contract call to withdraw funds
+        (contract-call? .dynamic-caller execute contract-addr withdraw-fn amount-to-withdraw)
       )
     error (err error)
   )
