@@ -196,43 +196,52 @@
 ;; This function will emit a print event with the topic
 ;; "withdrawal-accept".
 (define-public (complete-withdrawal-accept
-		(request-id uint)
-		(bitcoin-txid (buff 32))
-		(output-index uint)
-		(signer-bitmap uint)
-		(fee uint)
-		(burn-hash (buff 32))
-		(burn-height uint)
-		(sweep-txid (buff 32))
-	)
-	(begin
-		(try! (is-protocol-caller withdrawal-role contract-caller))
-
-		;; Validate that the request exists
-    	(asserts! (is-some (map-get? withdrawal-requests request-id)) ERR_INVALID_REQUEST_ID)
+    (request-id uint)
+    (bitcoin-txid (buff 32))
+    (output-index uint)
+    (signer-bitmap uint)
+    (fee uint)
+    (burn-hash (buff 32))
+    (burn-height uint)
+    (sweep-txid (buff 32))
+)
+  (begin
+    (try! (is-protocol-caller withdrawal-role contract-caller))
     
-    	;; Check if the request has already been processed
-    	(asserts! (is-none (map-get? withdrawal-status request-id)) (err u403))
-		;; Mark the withdrawal as completed
-		(map-insert withdrawal-status request-id true)
-		(map-insert completed-withdrawal-sweep request-id {
-			sweep-txid: sweep-txid,
-			sweep-burn-hash: burn-hash,
-			sweep-burn-height: burn-height,
-		})
-		(print {
-			topic: "withdrawal-accept",
-			request-id: request-id,
-			bitcoin-txid: bitcoin-txid,
-			signer-bitmap: signer-bitmap,
-			output-index: output-index,
-			fee: fee,
-			burn-hash: burn-hash,
-			burn-height: burn-height,
-			sweep-txid: sweep-txid,
-		})
-		(ok true)
-	)
+    ;; Validate that the request exists
+    (asserts! (is-some (map-get? withdrawal-requests request-id)) ERR_INVALID_REQUEST_ID)
+    
+    ;; Check if the request has already been processed
+    (asserts! (is-none (map-get? withdrawal-status request-id)) (err u403))
+    
+    ;; Validate burn height is reasonable (optional)
+    (asserts! (> burn-height u0) (err u405))
+    
+    ;; Validate sweep-txid is not empty (all zeros)
+    (asserts! (not (is-eq sweep-txid 0x0000000000000000000000000000000000000000000000000000000000000000)) (err u406))
+    
+    ;; Mark the withdrawal as completed
+    (map-insert withdrawal-status request-id true)
+    (map-insert completed-withdrawal-sweep request-id {
+      sweep-txid: sweep-txid,
+      sweep-burn-hash: burn-hash,
+      sweep-burn-height: burn-height,
+    })
+    
+    ;; Rest of the function
+    (print {
+      topic: "withdrawal-accept",
+      request-id: request-id,
+      bitcoin-txid: bitcoin-txid,
+      signer-bitmap: signer-bitmap,
+      output-index: output-index,
+      fee: fee,
+      burn-hash: burn-hash,
+      burn-height: burn-height,
+      sweep-txid: sweep-txid,
+    })
+    (ok true)
+  )
 )
 
 ;; Complete withdrawal request by noting the rejection in the
@@ -241,20 +250,28 @@
 ;; This function will emit a print event with the topic
 ;; "withdrawal-reject".
 (define-public (complete-withdrawal-reject
-		(request-id uint)
-		(signer-bitmap uint)
-	)
-	(begin
-		(try! (is-protocol-caller withdrawal-role contract-caller))
-		;; Mark the withdrawal as completed
-		(map-insert withdrawal-status request-id false)
-		(print {
-			topic: "withdrawal-reject",
-			request-id: request-id,
-			signer-bitmap: signer-bitmap,
-		})
-		(ok true)
-	)
+    (request-id uint)
+    (signer-bitmap uint)
+)
+  (begin
+    (try! (is-protocol-caller withdrawal-role contract-caller))
+    
+    ;; Validate that the request exists
+    (asserts! (is-some (map-get? withdrawal-requests request-id)) ERR_INVALID_REQUEST_ID)
+    
+    ;; Check if the request has already been processed
+    (asserts! (is-none (map-get? withdrawal-status request-id)) (err u403))
+    
+    ;; Mark the withdrawal as rejected
+    (map-insert withdrawal-status request-id false)
+    
+    (print {
+      topic: "withdrawal-reject",
+      request-id: request-id,
+      signer-bitmap: signer-bitmap,
+    })
+    (ok true)
+  )
 )
 
 ;; Store a new insert request.
@@ -265,108 +282,130 @@
 ;; This function does not handle validation or moving the funds.
 ;; Instead, it is purely for the purpose of storing the completed deposit.
 (define-public (complete-deposit
-		(txid (buff 32))
-		(vout-index uint)
-		(amount uint)
-		(recipient principal)
-		(burn-hash (buff 32))
-		(burn-height uint)
-		(sweep-txid (buff 32))
-	)
-	(begin
-		(try! (is-protocol-caller deposit-role contract-caller))
-		;; Check that the deposit hasn't already been processed
-    	(asserts! (is-none (map-get? deposit-status {txid: txid, vout-index: vout-index})) (err u404))
+    (txid (buff 32))
+    (vout-index uint)
+    (amount uint)
+    (recipient principal)
+    (burn-hash (buff 32))
+    (burn-height uint)
+    (sweep-txid (buff 32))
+)
+  (begin
+    (try! (is-protocol-caller deposit-role contract-caller))
     
-    	;; Validate amount is not zero
-    	(asserts! (> amount u0) (err u405))
-		(map-insert deposit-status {txid: txid, vout-index: vout-index} true)
-		(map-insert completed-deposits {txid: txid, vout-index: vout-index} {
-			amount: amount,
-			recipient: recipient,
-			sweep-txid: sweep-txid,
-			sweep-burn-hash: burn-hash,
-			sweep-burn-height: burn-height,
-		})
-		(print {
-			topic: "completed-deposit",
-			bitcoin-txid: txid,
-			output-index: vout-index,
-			amount: amount,
-			burn-hash: burn-hash,
-			burn-height: burn-height,
-			sweep-txid: sweep-txid,
-		})
-		(ok true)
-	)
+    ;; Validate txid is not empty (all zeros)
+    (asserts! (not (is-eq txid 0x0000000000000000000000000000000000000000000000000000000000000000)) (err u404))
+    
+    ;; Validate amount is not zero
+    (asserts! (> amount u0) (err u405))
+    
+    ;; Check that the deposit hasn't already been processed
+    (asserts! (is-none (map-get? deposit-status {txid: txid, vout-index: vout-index})) (err u406))
+    
+    ;; Validate burn height is reasonable
+    (asserts! (> burn-height u0) (err u407))
+    
+    ;; Validate sweep-txid is not empty
+    (asserts! (not (is-eq sweep-txid 0x0000000000000000000000000000000000000000000000000000000000000000)) (err u408))
+    
+    ;; Insert into maps
+    (map-insert deposit-status {txid: txid, vout-index: vout-index} true)
+    (map-insert completed-deposits {txid: txid, vout-index: vout-index} {
+      amount: amount,
+      recipient: recipient,
+      sweep-txid: sweep-txid,
+      sweep-burn-hash: burn-hash,
+      sweep-burn-height: burn-height,
+    })
+    
+    ;; Rest of function
+    (print {
+      topic: "completed-deposit",
+      bitcoin-txid: txid,
+      output-index: vout-index,
+      amount: amount,
+      burn-hash: burn-hash,
+      burn-height: burn-height,
+      sweep-txid: sweep-txid,
+    })
+    (ok true)
+  )
 )
 
 ;; Rotate the signer set, multi-sig principal, & aggregate pubkey
 ;; This function can only be called by the bootstrap-signers contract.
 (define-public (rotate-keys
-		(new-keys (list 128 (buff 33)))
-		(new-address principal)
-		(new-aggregate-pubkey (buff 33))
-		(new-signature-threshold uint)
-	)
-	(begin
-		;; Check that caller is protocol contract
-		(try! (is-protocol-caller governance-role contract-caller))
-		;; Check that the aggregate pubkey is not already in the map
-		(asserts! (map-insert aggregate-pubkeys new-aggregate-pubkey true) ERR_AGG_PUBKEY_REPLAY)
-
-		 ;; Validate new keys are not empty
-    	(asserts! (> (len new-keys) u0) (err u406))
+    (new-keys (list 128 (buff 33)))
+    (new-address principal)
+    (new-aggregate-pubkey (buff 33))
+    (new-signature-threshold uint)
+)
+  (begin
+    ;; Check that caller is protocol contract
+    (try! (is-protocol-caller governance-role contract-caller))
     
-    	;; Validate new threshold is valid (not zero and not greater than key count)
-    	(asserts! (and (> new-signature-threshold u0) (<= new-signature-threshold (len new-keys))) (err u407))
-
-		;; Update the current signer set
-		(var-set current-signer-set new-keys)
-		;; Update the current multi-sig address
-		(var-set current-signer-principal new-address)
-		;; Update the current signature threshold
-		(var-set current-signature-threshold new-signature-threshold)
-		;; Update the current aggregate pubkey
-		(var-set current-aggregate-pubkey new-aggregate-pubkey)
-		(print {
-			topic: "key-rotation",
-			new-keys: new-keys,
-			new-address: new-address,
-			new-aggregate-pubkey: new-aggregate-pubkey,
-			new-signature-threshold: new-signature-threshold
-		})
-		(ok true)
-	)
+    ;; Validate new keys are not empty
+    (asserts! (> (len new-keys) u0) (err u406))
+    
+    ;; Validate new-address is not the zero address (if applicable in your system)
+    (asserts! (not (is-eq new-address 'ST000000000000000000002AMW42H)) (err u407))
+    
+    ;; Validate threshold is reasonable
+    (asserts! (and (> new-signature-threshold u0) (<= new-signature-threshold (len new-keys))) (err u408))
+    
+    ;; Check that the aggregate pubkey is not already in the map
+    (asserts! (map-insert aggregate-pubkeys new-aggregate-pubkey true) ERR_AGG_PUBKEY_REPLAY)
+    
+    ;; Update state variables
+    (var-set current-signer-set new-keys)
+    (var-set current-signer-principal new-address)
+    (var-set current-signature-threshold new-signature-threshold)
+    (var-set current-aggregate-pubkey new-aggregate-pubkey)
+    
+    ;; Rest of function
+    (print {
+      topic: "key-rotation",
+      new-keys: new-keys,
+      new-address: new-address,
+      new-aggregate-pubkey: new-aggregate-pubkey,
+      new-signature-threshold: new-signature-threshold
+    })
+    (ok true)
+  )
 )
 
 ;; Update protocol contract
 ;; This function can only be called by the active bootstrap-signers contract
 (define-public (update-protocol-contract
-		(contract-type (buff 1))
-		(new-contract principal)
-	)
-	(begin
-		;; Check that caller is protocol contract
-		(try! (is-protocol-caller governance-role contract-caller))
-
-		;; Validate contract type is one of the defined roles
-    	(asserts! (or 
+    (contract-type (buff 1))
+    (new-contract principal)
+)
+  (begin
+    ;; Check that caller is protocol contract
+    (try! (is-protocol-caller governance-role contract-caller))
+    
+    ;; Validate contract-type is one of the defined roles
+    (asserts! (or 
                 (is-eq contract-type governance-role)
                 (is-eq contract-type deposit-role)
                 (is-eq contract-type withdrawal-role)) 
-              (err u408))
-		;; Update the protocol contract
-		(map-set active-protocol-contracts contract-type new-contract)
-		;; Update the protocol role
-		(map-set active-protocol-roles new-contract contract-type)
-		(print {
-			topic: "update-protocol-contract",
-			contract-type: contract-type,
-			new-contract: new-contract,
-		})
-		(ok true)
-	)
+              (err u409))
+    
+    ;; Validate new-contract is not the zero address (if applicable in your system)
+    (asserts! (not (is-eq new-contract 'ST000000000000000000002AMW42H)) (err u410))
+    
+    ;; Update the protocol contract
+    (map-set active-protocol-contracts contract-type new-contract)
+    (map-set active-protocol-roles new-contract contract-type)
+    
+    ;; Rest of function
+    (print {
+      topic: "update-protocol-contract",
+      contract-type: contract-type,
+      new-contract: new-contract,
+    })
+    (ok true)
+  )
 )
 
 ;; Private functions
