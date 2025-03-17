@@ -2,7 +2,7 @@
 
 ## Overview
 
-sBTC Yield Nexus is a sophisticated DeFi management platform built on Stacks, enabling users to earn yield on sBTC while maintaining custody and transparency. The platform combines yield-bearing token mechanics with vault strategies and risk-managed protocol integrations.
+sBTC Yield Nexus is a unified DeFi management platform that empowers users to seamlessly discover, track, and optimize their Bitcoin-based DeFi activities across the Stacks ecosystem. Combining a intuitive dashboard with automated yield strategies and real-time alerts, it simplifies sBTC DeFi participation while maximizing returns and minimizing risks.
 
 ### Frontend Components
 
@@ -14,7 +14,6 @@ The system includes a React-based dashboard with:
 - Portfolio allocation visualization
 - Tax reporting tools
 - Strategy creation wizard
-
 
 ## Key Features
 
