@@ -4,21 +4,43 @@
 
 sBTC Yield Nexus is a sophisticated DeFi management platform built on Stacks, enabling users to earn yield on sBTC while maintaining custody and transparency. The platform combines yield-bearing token mechanics with vault strategies and risk-managed protocol integrations.
 
-## Quick Start
+### Frontend Components
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/sbtc-yield-nexus
+The system includes a React-based dashboard with:
 
-# Install Clarinet
-curl -L https://github.com/hirosystems/clarinet/releases/download/v1.5.0/clarinet-linux-x64.tar.gz | tar xz
+- Real-time position tracking
+- APY leaderboards
+- Protocol risk analysis
+- Portfolio allocation visualization
+- Tax reporting tools
+- Strategy creation wizard
 
-# Run tests
-clarinet test
 
-# Deploy contracts (testnet)
-clarinet deploy --testnet
-```
+## Key Features
+
+### Automated Yield Strategies
+
+- **Dynamic Allocation**: Intelligent fund distribution across protocols
+- **Risk-Adjusted Weightings**: Allocation based on protocol risk profiles
+- **Auto-Compounding**: Reinvestment of yields for optimal returns
+- **Cross-Protocol Balancing**: Automatic rebalancing for optimal risk/reward
+
+### Security Framework
+
+- **Reentrancy Protection**: Prevent attack vectors through robust contract design
+- **Rate Limiting**: Protect against flash loan and other time-based attacks
+- **Input Validation**: Comprehensive validation for all user inputs
+- **Multi-Layer Authorization**: Role-based permissions and multi-sig requirements
+- **Emergency Shutdown**: Circuit breakers for critical system components
+
+### Advanced Mechanics
+
+| Feature               | Description                                 |
+| --------------------- | ------------------------------------------- |
+| Dynamic Exchange Rate | Real-time ysBTC/sBTC conversion rate        |
+| Protocol Isolation    | Separate vaults per strategy                |
+| Time-locked Changes   | 24-hour delay for critical operations       |
+| Batch Processing      | Handle up to 500 operations per transaction |
 
 ## Architecture
 
